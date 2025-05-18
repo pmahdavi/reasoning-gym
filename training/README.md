@@ -2,6 +2,15 @@
 
 Training codebase for training LLMs using Reasoning Gym procedural dataset generators.
 
+**Note**: `qwen-math/` directory contains the code from the Tina project, used for the Qwen2.5 3B RG-Math training. This is separate from the rest of our training/evaluation codebase.
+
+This readme documents:
+
+- Training environment setup and usage example
+- Converting training checkpoints to HuggingFace format
+- Evaluation setup and usage for eval on RG data
+- Evaluation setup and usage for external benchmarks
+
 ### Requirements
 
 1. Prepare and activate a Python 3.11 virtual environment however you prefer.
@@ -101,3 +110,32 @@ For example
 ```
 python evaluate_model.py --config eval_algorithmic_composite.yaml
 ```
+
+## External benchmark evaluations
+
+We additionally evaluate some models on external benchmarks using the Language Model Evaluation Harness from Eleuther AI.
+
+We utilise the `llama` branch for the Llama 3 MATH and GSM8K evaluation configurations it provides, for the fairest possible comparison against Meta's original Llama 3 model.
+
+```bash
+git clone https://github.com/EleutherAI/lm-evaluation-harness.git
+cd lm-evaluation-harness
+git checkout llama
+pip install -e .
+```
+
+For our Llama 3 3B RG-Math model, we evaluate both the original model and ours by directly using the Llama 3 configs provided by LMEH:
+
+```bash
+# tasks used: llama_math, gsm8k_cot_llama
+lm_eval --model vllm --model_args pretrained=/path/to/model --tasks llama_math --batch_size auto --output_path results/ --apply_chat_template --fewshot_as_multiturn
+```
+
+For our Qwen2.5 3B RG-Math model, we evaluate using a tweaked version of the same task configs. The system prompt used in RL is also used in evaluation for the RG-Math model. The original Qwen2.5 model was tested with the same system prompt, but performed worse than with the standard CoT prompt, so the final evaluation score utilised the standard prompt.
+
+```bash
+# tasks used: llama_math (edited, see below), gsm8k_cot_rg
+lm_eval --model vllm --model_args pretrained=/path/to/model --tasks llama_math --batch_size auto --output_path results/
+```
+
+The RG-specific task configs for LMEH are contained in `training/evaluations/lmeh/` in this repository. To run the `llama_math` eval, replace `llama_math_algebra` in the relevant LMEH tasks directory with the RG one provided.
