@@ -8,7 +8,7 @@
     <!-- badges -->
     <p align="center">
         <a href="https://arxiv.org/abs/2505.24760">
-            <img src="https://img.shields.io/badge/arXiv-2306.00777-b31b1b.svg?style=for-the-badge" alt="Paper PDF">
+            <img src="https://img.shields.io/badge/arXiv-2505.24760-b31b1b.svg?style=for-the-badge" alt="Paper PDF">
         </a>
     </p>
 </p>
@@ -79,6 +79,12 @@ If you have ideas for dataset generators please create an issue here or contact 
 
 [![](https://dcbadge.limes.pink/api/server/gpumode?style=flat)](https://discord.gg/gpumode)
 
+
+## 🚀 Projects Using Reasoning Gym
+
+Following is a list of awesome projects building on top of Reasoning Gym:
+- [Verifiers: Reinforcement Learning with LLMs in Verifiable Environments](https://github.com/willccbb/verifiers)
+- [(NVIDIA) ProRL: Prolonged Reinforcement Learning Expands Reasoning Boundaries in Large Language Models](https://arxiv.org/abs/2505.24864)
 
 ## 📝 Citation
 
