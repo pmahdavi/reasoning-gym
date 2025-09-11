@@ -128,6 +128,7 @@ Following is a list of awesome projects building on top of Reasoning Gym:
 - [(Gensyn) RL Swarm: a framework for planetary-scale collaborative RL](https://x.com/gensynai/status/1937917790922649669)
 - [(Axon RL) GEM: a comprehensive framework for RL environments](https://github.com/axon-rl/gem)
 - [(FAIR at Meta) OptimalThinkingBench: Evaluating Over and Underthinking in LLMs](https://github.com/facebookresearch/RAM/tree/main/projects/otb)
+- [(Gensyn) Sharing is Caring: Efficient LM Post-Training with Collective RL Experience Sharing](https://arxiv.org/abs/2509.08721v1)
 
 ## 📝 Citation
 
