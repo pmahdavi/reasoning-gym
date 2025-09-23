@@ -1,57 +1,53 @@
 hydra:
   searchpath:
-    - file://verl/verl/trainer/config
-
+  - pkg://verl.trainer.config
 defaults:
-  - ppo_trainer
-  - _self_
-
+- ppo_trainer
+- _self_
 reasoning_gym:
   dataset_size: 20000
   developer_prompt: DeepSeekZero
   datasets:
     spell_backward:
-        weight: 0.33
-        config:
-          min_word_len: 3
-          max_word_len: 10
+      weight: 0.33
+      config:
+        min_word_len: 3
+        max_word_len: 10
     letter_jumble:
-        weight: 0.34
-        config:
-           min_word_len: 1  # Minimum word length
-           max_word_len: 50  # Maximum word length
-           min_words: 3  # Minimum words per task
-           max_words: 40
+      weight: 0.34
+      config:
+        min_word_len: 1
+        max_word_len: 50
+        min_words: 3
+        max_words: 40
     word_sorting:
-        weight: 0.33
-        config:
-           min_words: 3
-           max_words: 10
-           min_word_length: 3
-           max_word_length: 12
-
+      weight: 0.33
+      config:
+        min_words: 3
+        max_words: 10
+        min_word_length: 3
+        max_word_length: 12
 curriculum:
-    enabled: False
-    schedule:
-      automatic: True
-      update_steps: 30 # automatic curriculum updating after 50 steps
-    last_k: 20
-    success_threshold: 0.70
-    failure_threshold: 0.10
-    curricula:
-      spell_backward:
-        attribute_levels:
-          word_len: 0
+  enabled: false
+  schedule:
+    automatic: true
+    update_steps: 30
+  last_k: 20
+  success_threshold: 0.7
+  failure_threshold: 0.1
+  curricula:
+    spell_backward:
+      attribute_levels:
+        word_len: 0
 reward:
-  use_accuracy: True
+  use_accuracy: true
   secondary_rewards:
-   - name: cosine
-     scaling_factor: 0.3
-   - name: format
-     scaling_factor: 0.2
-     kwargs:
-        preappend_thinking_token: False
-
+  - name: cosine
+    scaling_factor: 0.3
+  - name: format
+    scaling_factor: 0.2
+    kwargs:
+      preappend_thinking_token: false
 data:
   tokenizer: null
   train_files: train.parquet
@@ -61,167 +57,157 @@ data:
   max_response_length: 1024
   train_batch_size: 32
   val_batch_size: 64
-  return_raw_chat: True
-  return_raw_input_ids: True
+  return_raw_chat: true
+  return_raw_input_ids: true
 actor_rollout_ref:
-  hybrid_engine: True
+  hybrid_engine: true
   model:
     path: Qwen/Qwen2.5-3B-Instruct
     external_lib: null
-    override_config: { }
-    enable_gradient_checkpointing: True
-    use_remove_padding: True
+    override_config: {}
+    enable_gradient_checkpointing: true
+    use_remove_padding: true
   actor:
-    strategy: fsdp  # This is for backward-compatibility
+    strategy: fsdp
     ppo_mini_batch_size: 16
-    ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+    ppo_micro_batch_size: null
     ppo_micro_batch_size_per_gpu: 4
-    use_dynamic_bsz: False
-    ppo_max_token_len_per_gpu: 12288 # n * ${data.max_prompt_length} + ${data.max_response_length}
+    use_dynamic_bsz: false
+    ppo_max_token_len_per_gpu: 12288
     grad_clip: 1.0
     clip_ratio: 0.2
     entropy_coeff: 0.001
-    use_kl_loss: True # True for GRPO
-    kl_loss_coef: 0.001 # for grpo
-    kl_loss_type: low_var_kl # for grpo
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: low_var_kl
     ppo_epochs: 1
-    shuffle: False
-    ulysses_sequence_parallel_size: 1 # sp size
+    shuffle: false
+    ulysses_sequence_parallel_size: 1
     optim:
       lr: 1e-6
-      lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
-      min_lr_ratio: null   # only useful for warmup with cosine
-      warmup_style: constant  # select from constant/cosine
-      total_training_steps: 500  # must be override by program
+      lr_warmup_steps_ratio: 0.0
+      min_lr_ratio: null
+      warmup_style: constant
+      total_training_steps: 500
     fsdp_config:
       wrap_policy:
-        # transformer_layer_cls_to_wrap: None
         min_num_params: 0
-      param_offload: False
-      optimizer_offload: False
+      param_offload: false
+      optimizer_offload: false
       fsdp_size: -1
   ref:
     fsdp_config:
-      param_offload: True
+      param_offload: true
       wrap_policy:
-        # transformer_layer_cls_to_wrap: None
         min_num_params: 0
-    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size: null
     log_prob_micro_batch_size_per_gpu: 160
     log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
     log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
-    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size}
   rollout:
     name: vllm
     temperature: 1.0
-    top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+    top_k: -1
     top_p: 1
-    prompt_length: ${data.max_prompt_length}  # not use for opensource
+    prompt_length: ${data.max_prompt_length}
     response_length: ${data.max_response_length}
-    # for vllm rollout
-    dtype: bfloat16 # should align with FSDP
+    dtype: bfloat16
     gpu_memory_utilization: 0.7
-    ignore_eos: False
-    enforce_eager: True
-    free_cache_engine: True
+    ignore_eos: false
+    enforce_eager: true
+    free_cache_engine: true
     load_format: dummy_dtensor
     tensor_model_parallel_size: 4
     max_num_batched_tokens: 12288
     max_num_seqs: 1024
-    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size: null
     log_prob_micro_batch_size_per_gpu: 160
     log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
     log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
-    disable_log_stats: True
-    enable_chunked_prefill: True # could get higher throughput
-    # for hf rollout
-    do_sample: True
-    use_fire_sampling: False
+    disable_log_stats: true
+    enable_chunked_prefill: true
+    do_sample: true
+    use_fire_sampling: false
     max_model_len: 12288
-    # number of responses (i.e. num sample times)
-    n: 8 # > 1 for grpo
+    n: 8
     val_kwargs:
-      do_sample: True
-
+      do_sample: true
 algorithm:
   gamma: 1.0
   lam: 1.0
   adv_estimator: grpo
-  kl_penalty: kl  # how to estimate kl divergence
+  kl_penalty: kl
   kl_ctrl:
     type: fixed
     kl_coef: 0.001
-verbose: True
+verbose: true
 trainer:
-  balance_batch: True
+  balance_batch: true
   total_epochs: 1
   total_training_steps: 500
   project_name: rg-test
   experiment_name: intra_reasoning_algorithmic_qwen_3b_composite
-  logger: [ 'console', 'wandb' ]
+  logger:
+  - console
+  - wandb
   val_generations_to_log_to_wandb: 0
   nnodes: 1
   n_gpus_per_node: 4
   save_freq: 100
-  # auto: find the last ckpt to resume. If can't find, start from scratch
-  resume_mode: auto # or auto or resume_path if
-  resume_from_path: False
+  resume_mode: auto
+  resume_from_path: false
   test_freq: 100
   critic_warmup: 0
   default_hdfs_dir: null
-  remove_previous_ckpt_in_save: False
-  del_local_ckpt_after_load: False
+  remove_previous_ckpt_in_save: false
+  del_local_ckpt_after_load: false
   default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
-
-
 critic:
   strategy: fsdp
   optim:
     lr: 1e-5
-    lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
-    min_lr_ratio: null   # only useful for warmup with cosine
-    warmup_style: constant  # select from constant/cosine
-    total_training_steps: -1  # must be override by program
+    lr_warmup_steps_ratio: 0.0
+    min_lr_ratio: null
+    warmup_style: constant
+    total_training_steps: -1
   model:
-    path: ~/models/deepseek-llm-7b-chat
+    path: deepseek-ai/deepseek-llm-7b-chat
     tokenizer_path: ${actor_rollout_ref.model.path}
-    override_config: { }
+    override_config: {}
     external_lib: ${actor_rollout_ref.model.external_lib}
-    enable_gradient_checkpointing: True
-    use_remove_padding: False
+    enable_gradient_checkpointing: true
+    use_remove_padding: false
     fsdp_config:
-      param_offload: False
-      optimizer_offload: False
+      param_offload: false
+      optimizer_offload: false
       wrap_policy:
-        # transformer_layer_cls_to_wrap: None
         min_num_params: 0
       fsdp_size: -1
   ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
-  ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+  ppo_micro_batch_size: null
   ppo_micro_batch_size_per_gpu: null
   forward_micro_batch_size: ${critic.ppo_micro_batch_size}
   forward_micro_batch_size_per_gpu: ${critic.ppo_micro_batch_size_per_gpu}
   use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
-  ppo_max_token_len_per_gpu: 32768 # (${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}) * 2
+  ppo_max_token_len_per_gpu: 32768
   forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
-  ulysses_sequence_parallel_size: 1 # sp size
+  ulysses_sequence_parallel_size: 1
   ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
   shuffle: ${actor_rollout_ref.actor.shuffle}
   grad_clip: 1.0
   cliprange_value: 0.5
-
-# Reward model not used for GRPO
 reward_model:
-  enable: False
+  enable: false
   strategy: fsdp
   model:
     input_tokenizer: ${actor_rollout_ref.model.path}
-    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    path: sfairXC/FsfairX-LLaMA3-RM-v0.1
     external_lib: ${actor_rollout_ref.model.external_lib}
-    use_remove_padding: False
+    use_remove_padding: false
     fsdp_config:
       min_num_params: 0
-      param_offload: False
+      param_offload: false
       fsdp_size: -1
   micro_batch_size: null
   micro_batch_size_per_gpu: null

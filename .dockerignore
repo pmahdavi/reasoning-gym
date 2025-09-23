@@ -1,0 +1,111 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+logs/
+
+# Model files and checkpoints (these should be mounted as volumes)
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+
+# Cache directories
+cache/
+.cache/
+
+# Documentation
+docs/
+*.md
+!README.md
+!DOCKER_TRAINING.md
+
+# Notebooks (not needed for training)
+notebooks/
+*.ipynb
+
+# Example files
+examples/
+
+# Test files
+tests/
+
+# Temporary files
+tmp/
+temp/
+
+# Results and outputs
+results/
+outputs/
+eval/results/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Environment files (should not be in image)
+.env
+.env.*
+
+# Scripts that aren't needed in container
+scripts/debug_*.py
+
+# Large data files
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# Modal-specific files (from prime-rl)
+modal/
+
+# Any local configuration overrides
+local_config/
+*.local.yaml 
