@@ -1,0 +1,64 @@
+name: Docker Full Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Semver or custom tag to push (e.g., v0.1.23)'
+        required: true
+      base_image:
+        description: 'Override BASE_IMAGE (optional)'
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-full:
+    # Expect a self-hosted runner with plenty of disk (e.g., 150-300GB free)
+    runs-on: self-hosted
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+      PLATFORMS: linux/amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free up space (if on GitHub-hosted; no-op on self-hosted)
+        if: startsWith(runner.name, 'GitHub')
+        run: |
+          sudo rm -rf /usr/local/lib/android \
+                      /opt/ghc \
+                      "$AGENT_TOOLSDIRECTORY" \
+                      /usr/local/share/boost \
+                      /usr/share/dotnet \
+                      /opt/hostedtoolcache
+          df -h || true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push FULL image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          build-args: |
+            INCLUDE_TRAINING_STACK=1
+            BASE_IMAGE=${{ github.event.inputs.base_image }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:full-${{ github.event.inputs.version_tag }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+          provenance: false 

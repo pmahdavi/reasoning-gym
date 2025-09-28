@@ -1,5 +1,6 @@
 # Single-stage build to maximize compatibility with remote builders (e.g., Modal)
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM ${BASE_IMAGE}
 
 ARG INCLUDE_TRAINING_STACK=1
 
