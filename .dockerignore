@@ -1,111 +1,41 @@
-# Git files
-.git
-.gitignore
-.gitattributes
-
-# Python cache
+# Python
 __pycache__
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
 *.so
-.Python
-*.egg-info/
-dist/
+*.egg-info
+.eggs
+.dist
 build/
-eggs/
-.eggs/
-*.egg
+dist/
 
-# Virtual environments
-venv/
-env/
-ENV/
+# Git
+.git
+.gitignore
+
+# Virtualenvs
 .venv
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.cursor/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Test and coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.mypy_cache/
-.ruff_cache/
-
-# Logs and databases
-*.log
-*.sql
-*.sqlite
-logs/
-
-# Model files and checkpoints (these should be mounted as volumes)
-checkpoints/
-*.pt
-*.pth
-*.safetensors
-*.bin
-*.ckpt
-
-# Cache directories
-cache/
-.cache/
-
-# Documentation
-docs/
-*.md
-!README.md
-!DOCKER_TRAINING.md
-
-# Notebooks (not needed for training)
-notebooks/
-*.ipynb
-
-# Example files
-examples/
-
-# Test files
-tests/
-
-# Temporary files
-tmp/
-temp/
-
-# Results and outputs
-results/
-outputs/
-eval/results/
-
-# Backup files
-*.bak
-*.backup
-*~
-
-# Environment files (should not be in image)
+venv/
 .env
-.env.*
 
-# Scripts that aren't needed in container
-scripts/debug_*.py
+# IDEs
+.vscode
+.idea
 
-# Large data files
-*.gz
-*.zip
-*.tar
-*.tar.gz
+# Local data and caches
+*.log
+.DS_Store
+.cache
+.wandb
+outputs/
+checkpoints/
+cache/
 
-# Modal-specific files (from prime-rl)
-modal/
+# Notebooks & artifacts
+*.ipynb_checkpoints
+**/.ipynb_checkpoints
+notebooks/**
 
-# Any local configuration overrides
-local_config/
-*.local.yaml 
+# Modal volumes (if any local mounts)
+modal/.local 

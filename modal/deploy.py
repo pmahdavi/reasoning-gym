@@ -48,10 +48,20 @@ cache_vol = modal.Volume.from_name("rg-cache", create_if_missing=True)
 # Build image from local Dockerfile (uses .dockerignore)
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-image = modal.Image.from_dockerfile(
-    "./Dockerfile",
-    context_dir=str(REPO_ROOT),
-)
+# Prefer using a prebuilt registry image; fallback to local Dockerfile.
+# Configure via environment variables:
+#   RG_USE_REGISTRY=1 (default) to pull from registry; set to 0 to build locally
+#   RG_IMAGE=ghcr.io/<owner>/reasoning-gym:<tag> to override the image reference
+REGISTRY_IMAGE = os.environ.get("RG_IMAGE", "ghcr.io/open-thought/reasoning-gym:latest")
+USE_REGISTRY = os.environ.get("RG_USE_REGISTRY", "1") == "1"
+
+if USE_REGISTRY:
+    image = modal.Image.from_registry(REGISTRY_IMAGE)
+else:
+    image = modal.Image.from_dockerfile(
+        "./Dockerfile",
+        context_dir=str(REPO_ROOT),
+    )
 
 # Get GPU spec from environment variable or use default
 GPU_SPEC = os.environ.get("MODAL_GPU_SPEC", "A100-40GB:4")
@@ -95,6 +105,7 @@ def train(
     os.environ.setdefault("TRANSFORMERS_CACHE", "/cache/hf")
     os.environ.setdefault("WANDB_DIR", "/outputs/wandb")
     os.environ.setdefault("WANDB_PROJECT", project_name)
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     
     # Add NCCL debugging for troubleshooting GPU coordination issues
     os.environ["NCCL_DEBUG"] = "INFO"
@@ -128,6 +139,7 @@ def train(
     print("GPU specification:", GPU_SPEC)
     print("Checkpoints:", ckpt_dir)
     print("W&B project:", project_name)
+    print("Image:", REGISTRY_IMAGE if USE_REGISTRY else "Dockerfile build")
     print("=" * 60)
 
     result = subprocess.run(cmd)

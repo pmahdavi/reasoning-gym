@@ -1,11 +1,15 @@
 # Single-stage build to maximize compatibility with remote builders (e.g., Modal)
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM ${BASE_IMAGE}
+
+ARG INCLUDE_TRAINING_STACK=1
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=$PATH:/usr/local/cuda/bin
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
+ENV PIP_NO_CACHE_DIR=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -28,8 +32,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 # Upgrade pip and install build tools
-RUN python -m pip install --upgrade pip setuptools wheel
-RUN pip install packaging ninja
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir packaging ninja
 
 # Working directory
 WORKDIR /workspace
@@ -41,37 +45,34 @@ COPY training /workspace/training/
 COPY tools /workspace/tools/
 
 # Install base dependencies following the training README order
-RUN pip install wheel fire
+RUN pip install --no-cache-dir wheel fire
 
 # Install project in editable mode
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
 
-# Install verl at the specific commit 
-# This will install PyTorch and other dependencies
-RUN pip install git+https://github.com/volcengine/verl.git@c34206925e2a50fd452e474db857b4d488f8602d
-
-# Fix tensordict compatibility issue with PyTorch 2.8.0
-# According to verl docs, tensordict 0.6.2 is needed for newer pytorch versions
-RUN pip install tensordict==0.6.2 --force-reinstall
-
-# Upgrade vllm to a supported version (verl installs 0.2.5 which is too old)
-RUN pip install vllm==0.7.3 --force-reinstall
-
-# Get the PyTorch version that verl installed
-RUN python -c "import torch; print('PyTorch version:', torch.__version__, 'CUDA:', torch.version.cuda)"
-
-# Build flash attention from source against the current PyTorch version
-RUN git clone https://github.com/Dao-AILab/flash-attention.git /tmp/flash-attention && \
+# Optionally install training stack (verl, torch, vllm, flash-attn)
+RUN if [ "$INCLUDE_TRAINING_STACK" = "1" ]; then \
+    pip install --no-cache-dir git+https://github.com/volcengine/verl.git@c34206925e2a50fd452e474db857b4d488f8602d && \
+    pip install --no-cache-dir tensordict==0.6.2 --force-reinstall && \
+    pip install --no-cache-dir vllm==0.7.3 --force-reinstall && \
+    git clone https://github.com/Dao-AILab/flash-attention.git /tmp/flash-attention && \
     cd /tmp/flash-attention && \
     git checkout v2.7.3 && \
     pip install . --no-build-isolation && \
-    cd / && rm -rf /tmp/flash-attention
+    cd / && rm -rf /tmp/flash-attention && \
+    python -c "import flash_attn; print('flash_attn installed successfully')"; \
+  fi
 
-# Verify flash_attn installation
-RUN python -c "import flash_attn; print('flash_attn installed successfully')"
+# Get the PyTorch version that verl installed
+RUN if [ "$INCLUDE_TRAINING_STACK" = "1" ]; then \
+    python -c "import torch; print('PyTorch version:', torch.__version__, 'CUDA:', torch.version.cuda)"; \
+  else \
+    echo "Training stack excluded (INCLUDE_TRAINING_STACK=0)"; \
+  fi
 
 # Install additional dependencies for training
-RUN pip install \
+RUN if [ "$INCLUDE_TRAINING_STACK" = "1" ]; then \
+  pip install --no-cache-dir \
     hydra-core>=1.3.2 \
     omegaconf>=2.3.0 \
     ray[default]>=2.9.0 \
@@ -81,7 +82,8 @@ RUN pip install \
     datasets>=2.14.0 \
     sentencepiece>=0.1.99 \
     protobuf>=3.20.0 \
-    huggingface-hub>=0.19.0
+    huggingface-hub>=0.19.0; \
+  fi
 
 # Create trainer user
 RUN useradd -m -u 1000 -s /bin/bash trainer \
