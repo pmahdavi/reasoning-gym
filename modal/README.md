@@ -32,24 +32,11 @@ Expected output shows Python/Torch versions, CUDA availability, GPU count, and f
 ## Quick Start: Training
 
 ```bash
-# Algebra intra-generalisation (4x A100 40GB)
-modal run modal/deploy.py \
-  --config-name algebra_qwen_3b \
-  --gpu-spec A100-80GB:4 \
-  --project-name rg-grpo \
-  --experiment-name intra_algebra_modal \
-  --overrides trainer.n_gpus_per_node=4 actor_rollout_ref.rollout.tensor_model_parallel_size=4
+# Algebra intra-generalisation (4x A100 80GB)
+export RG_USE_REGISTRY=0 && export MODAL_GPU_SPEC="A100-80GB:4" && modal run --detach modal/deploy.py --config-name algebra_qwen_3b --project-name rg-grpo --experiment-name algebra_qwen_3b_config_fix --overrides "trainer.total_training_steps=20"
 ```
 
-Smaller/cheaper run:
-```bash
-modal run modal/deploy.py \
-  --config-name arithmetic_qwen_3b \
-  --gpu-spec A100-40GB:2 \
-  --project-name rg-grpo \
-  --experiment-name intra_arithmetic_modal \
-  --overrides trainer.n_gpus_per_node=2 actor_rollout_ref.rollout.tensor_model_parallel_size=1
-```
+
 
 ## Parameters
 
