@@ -35,7 +35,7 @@ Expected output shows Python/Torch versions, CUDA availability, GPU count, and f
 # Algebra intra-generalisation (4x A100 40GB)
 modal run modal/deploy.py \
   --config-name algebra_qwen_3b \
-  --gpu-spec A100-40GB:4 \
+  --gpu-spec A100-80GB:4 \
   --project-name rg-grpo \
   --experiment-name intra_algebra_modal \
   --overrides trainer.n_gpus_per_node=4 actor_rollout_ref.rollout.tensor_model_parallel_size=4
