@@ -76,7 +76,60 @@ See `nvidia-smi` output for your system GPU IDs. `n_gpus_per_node` should be set
 You can change all configuration options by either modifying the config YAML (in this case, `configs/inter_generalisation/algorithmic_qwen_3b.yaml`) or providing them as args to the Python script.
 
 
-# Exporting from FSDP checkpoint to HF model checkpoint
+# HuggingFace Hub Upload
+
+## Automatic Upload (NEW! 🎉)
+
+You can now automatically upload your trained models to HuggingFace Hub at the end of training, including optimizer states for full reproducibility!
+
+**Quick setup:**
+
+1. Add to your config YAML:
+```yaml
+hf_upload:
+  enabled: true
+  repo_id: "your-username/your-model-name"
+  optimizer_save_mode: "full"  # or null to skip optimizer
+  private: false  # true for private repos
+```
+
+2. Train as usual - upload happens automatically!
+
+```bash
+python train_grpo.py --config-path configs --config-name your_config
+```
+
+**See [HF_UPLOAD_GUIDE.md](HF_UPLOAD_GUIDE.md) for complete documentation.**
+
+**Example config:** `configs/hf_upload_example.yaml`
+
+### Benefits:
+- ✅ Automatic upload at training end
+- ✅ Includes optimizer states for reproducibility
+- ✅ No manual conversion needed
+- ✅ Consolidated checkpoint ready for inference
+
+---
+
+## Manual Upload (For Existing Checkpoints)
+
+Upload any existing checkpoint using the standalone script:
+
+```bash
+python scripts/upload_checkpoint_to_hf.py \
+    --checkpoint-dir checkpoints/my-exp/global_step_500/actor \
+    --model-name Qwen/Qwen2.5-3B-Instruct \
+    --repo-id username/my-model \
+    --step 500 \
+    --optimizer-save-mode full
+```
+
+---
+
+## Legacy: Manual Conversion (Old Method)
+
+<details>
+<summary>Click to expand legacy manual conversion instructions</summary>
 
 After training your model the weights are saved across as a sharded checkpoints across several files. To faciliate simple evaluation of your trained model you may want to convert this into a HF model checkpoint. We have added a utility script to convert your sharded checkpoint into a hf checkpoint.
 
@@ -91,6 +144,10 @@ For example
 ```bash
 python utils/load_fsdp_to_hf.py checkpoints/rg-test/intra_reasoning_algorithmic_qwen_3b_composite/global_step_400/actor/ checkpoints/rg-test/intra_reasoning_algorithmic_qwen_3b_composite/global_step_400/actor/huggingface qwen3b
 ```
+
+**Note:** This old method only converts model weights (no optimizer states) and requires manual upload to HuggingFace Hub. Consider using the automatic upload feature instead!
+
+</details>
 
 # Run evaluations
 

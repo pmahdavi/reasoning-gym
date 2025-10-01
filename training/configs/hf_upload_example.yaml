@@ -1,0 +1,235 @@
+# Example configuration for HuggingFace Hub upload
+# This extends the base algorithmic_qwen_3b config with HF upload settings
+
+hydra:
+  searchpath:
+  - pkg://verl.trainer.config
+defaults:
+- ppo_trainer
+- _self_
+
+# HuggingFace Upload Configuration
+hf_upload:
+  # Enable automatic upload to HuggingFace Hub at the end of training
+  enabled: true
+  
+  # Repository ID on HuggingFace Hub (required if enabled=true)
+  repo_id: "your-username/reasoning-gym-qwen-3b"
+  
+  # Optional: Organization name (if uploading to an organization)
+  # organization: "your-org"
+  organization: null
+  
+  # Whether to create a private repository
+  private: false
+  
+  # How to save optimizer states:
+  # - "full": Gather all sharded optimizer states to rank 0 (recommended)
+  # - null: Don't save optimizer states (faster, but can't resume training)
+  optimizer_save_mode: "full"
+  
+  # Note: When optimizer_save_mode = "full", the system will:
+  # 1. Load all optimizer shards from the veRL checkpoint
+  # 2. Consolidate them into a single optimizer.pt file
+  # 3. Upload to HuggingFace Hub alongside the model weights
+  #
+  # This allows others to:
+  # - Resume training from your checkpoint
+  # - Reproduce your exact optimization state
+  # - Continue fine-tuning with the same optimizer momentum
+
+reasoning_gym:
+  dataset_size: 20000
+  developer_prompt: DeepSeekZero
+  datasets:
+    spell_backward:
+      weight: 0.33
+      config:
+        min_word_len: 3
+        max_word_len: 10
+    letter_jumble:
+      weight: 0.34
+      config:
+        min_word_len: 1
+        max_word_len: 50
+        min_words: 3
+        max_words: 40
+    word_sorting:
+      weight: 0.33
+      config:
+        min_words: 3
+        max_words: 10
+        min_word_length: 3
+        max_word_length: 12
+
+curriculum:
+  enabled: false
+
+reward:
+  use_accuracy: true
+  secondary_rewards:
+  - name: cosine
+    scaling_factor: 0.3
+  - name: format
+    scaling_factor: 0.2
+    kwargs:
+      preappend_thinking_token: false
+
+data:
+  tokenizer: null
+  train_files: train.parquet
+  val_files: test.parquet
+  prompt_key: prompt
+  max_prompt_length: 512
+  max_response_length: 1024
+  train_batch_size: 32
+  val_batch_size: 64
+  return_raw_chat: true
+  return_raw_input_ids: true
+
+actor_rollout_ref:
+  hybrid_engine: true
+  model:
+    path: Qwen/Qwen2.5-3B-Instruct
+    external_lib: null
+    override_config: {}
+    enable_gradient_checkpointing: true
+    use_remove_padding: true
+  actor:
+    strategy: fsdp
+    ppo_mini_batch_size: 16
+    ppo_micro_batch_size: null
+    ppo_micro_batch_size_per_gpu: 4
+    use_dynamic_bsz: false
+    ppo_max_token_len_per_gpu: 12288
+    grad_clip: 1.0
+    clip_ratio: 0.2
+    entropy_coeff: 0.001
+    use_kl_loss: true
+    kl_loss_coef: 0.001
+    kl_loss_type: low_var_kl
+    ppo_epochs: 1
+    shuffle: false
+    ulysses_sequence_parallel_size: 1
+    optim:
+      lr: 1e-6
+      lr_warmup_steps_ratio: 0.0
+      min_lr_ratio: null
+      warmup_style: constant
+      total_training_steps: 500
+    fsdp_config:
+      wrap_policy:
+        min_num_params: 0
+      param_offload: false
+      optimizer_offload: false
+      fsdp_size: -1
+  ref:
+    fsdp_config:
+      param_offload: true
+      wrap_policy:
+        min_num_params: 0
+    log_prob_micro_batch_size: null
+    log_prob_micro_batch_size_per_gpu: 160
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size}
+  rollout:
+    name: vllm
+    temperature: 1.0
+    top_k: -1
+    top_p: 1
+    prompt_length: ${data.max_prompt_length}
+    response_length: ${data.max_response_length}
+    dtype: bfloat16
+    gpu_memory_utilization: 0.7
+    ignore_eos: false
+    enforce_eager: true
+    free_cache_engine: true
+    load_format: dummy_dtensor
+    tensor_model_parallel_size: 4
+    max_num_batched_tokens: 12288
+    max_num_seqs: 1024
+    log_prob_micro_batch_size: null
+    log_prob_micro_batch_size_per_gpu: 160
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    disable_log_stats: true
+    enable_chunked_prefill: true
+    do_sample: true
+    use_fire_sampling: false
+    max_model_len: 12288
+    n: 8
+    val_kwargs:
+      do_sample: true
+
+algorithm:
+  gamma: 1.0
+  lam: 1.0
+  adv_estimator: grpo
+  kl_penalty: kl
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+
+verbose: true
+
+trainer:
+  balance_batch: true
+  total_epochs: 1
+  total_training_steps: 500
+  project_name: rg-test
+  experiment_name: algorithmic_qwen_3b_with_hf_upload
+  logger:
+  - console
+  - wandb
+  val_generations_to_log_to_wandb: 0
+  nnodes: 1
+  n_gpus_per_node: 4
+  save_freq: 100
+  resume_mode: auto
+  resume_from_path: false
+  test_freq: 100
+  critic_warmup: 0
+  default_hdfs_dir: null
+  remove_previous_ckpt_in_save: false
+  del_local_ckpt_after_load: false
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+
+critic:
+  strategy: fsdp
+  optim:
+    lr: 1e-5
+    lr_warmup_steps_ratio: 0.0
+    min_lr_ratio: null
+    warmup_style: constant
+    total_training_steps: -1
+  model:
+    path: deepseek-ai/deepseek-llm-7b-chat
+    tokenizer_path: ${actor_rollout_ref.model.path}
+    override_config: {}
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    enable_gradient_checkpointing: true
+    use_remove_padding: false
+    fsdp_config:
+      param_offload: false
+      optimizer_offload: false
+      wrap_policy:
+        min_num_params: 0
+      fsdp_size: -1
+  ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
+  ppo_micro_batch_size: null
+  ppo_micro_batch_size_per_gpu: null
+  forward_micro_batch_size: ${critic.ppo_micro_batch_size}
+  forward_micro_batch_size_per_gpu: ${critic.ppo_micro_batch_size_per_gpu}
+  use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+  ppo_max_token_len_per_gpu: 32768
+  forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
+  ulysses_sequence_parallel_size: 1
+  ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
+  shuffle: ${actor_rollout_ref.actor.shuffle}
+  grad_clip: 1.0
+  cliprange_value: 0.5
+
+reward_model:
+  enable: false
+

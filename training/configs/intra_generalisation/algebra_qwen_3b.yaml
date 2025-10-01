@@ -150,6 +150,15 @@ algorithm:
     type: fixed
     kl_coef: 0.001
 verbose: True
+
+# HuggingFace Upload Configuration (optional)
+hf_upload:
+  enabled: False  # Set to True to enable automatic upload
+  repo_id: null
+  organization: null
+  private: False
+  optimizer_save_mode: null  # "full" to include optimizer states
+
 trainer:
   balance_batch: True
   total_epochs: 1

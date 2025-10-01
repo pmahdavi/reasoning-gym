@@ -129,6 +129,9 @@ def train(
         f"trainer.experiment_name={experiment_name}",
     ]
 
+    # Override the default checkpoint directory to use the persistent volume
+    cmd.append(f"trainer.default_local_dir={ckpt_dir}")
+
     if overrides:
         cmd.extend(overrides)
 

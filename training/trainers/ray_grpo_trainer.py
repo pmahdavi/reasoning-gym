@@ -2,8 +2,10 @@
 # https://github.com/volcengine/verl/blob/a65c9157bc0b85b64cd753de19f94e80a11bd871/verl/trainer/main_ppo.py
 
 import gc
+import os
 import uuid
 from copy import deepcopy
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -11,6 +13,7 @@ from omegaconf import OmegaConf, open_dict
 from rewards import reward_registry
 from torchdata.stateful_dataloader import StatefulDataLoader
 from utils import ReasoningGymDataset
+from utils.hf_uploader import HuggingFaceUploader
 from verl import DataProto
 from verl.trainer.ppo.ray_trainer import (
     AdvantageEstimator,
@@ -77,6 +80,16 @@ class RayGRPOTrainer(RayPPOTrainer):
             train_reward_fn,
             val_reward_fn,
         )
+        
+        # Initialize HuggingFace uploader if configured
+        self.hf_uploader = None
+        if hasattr(config, "hf_upload") and config.hf_upload.get("enabled", False):
+            self.hf_uploader = HuggingFaceUploader(
+                repo_id=config.hf_upload.repo_id,
+                organization=config.hf_upload.get("organization", None),
+                private=config.hf_upload.get("private", False),
+                optimizer_save_mode=config.hf_upload.get("optimizer_save_mode", None),
+            )
 
     def _score_output(self, data: DataProto, num_examine: int = 0) -> torch.Tensor:
         reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
@@ -392,7 +405,41 @@ class RayGRPOTrainer(RayPPOTrainer):
 
                 if is_last_step:
                     print(f"Final validation metrics: {last_val_metrics}")
+                    
+                    # Upload to HuggingFace Hub if configured
+                    if self.hf_uploader is not None:
+                        self._upload_to_huggingface()
+                    
                     return
 
                 self.global_steps += 1
                 gc.collect()
+    
+    def _upload_to_huggingface(self):
+        """Upload the final checkpoint to HuggingFace Hub."""
+        try:
+            print("\n" + "="*60)
+            print("[HF Upload] Starting upload to HuggingFace Hub")
+            print("="*60)
+            
+            # Determine the checkpoint directory
+            checkpoint_dir = Path(self.config.trainer.default_local_dir) / f"global_step_{self.global_steps}" / "actor"
+            
+            # Get the base model name
+            model_name = self.config.actor_rollout_ref.model.path
+            
+            # Upload using the checkpoint directory method
+            # This works with veRL's sharded checkpoint format
+            self.hf_uploader.upload_from_checkpoint_dir(
+                checkpoint_dir=checkpoint_dir,
+                model_name=model_name,
+                step=self.global_steps,
+            )
+            
+            print("="*60)
+            print("[HF Upload] Upload completed successfully!")
+            print("="*60 + "\n")
+            
+        except Exception as e:
+            print(f"[HF Upload] Warning: Failed to upload to HuggingFace Hub: {e}")
+            print("[HF Upload] Continuing without upload...")
